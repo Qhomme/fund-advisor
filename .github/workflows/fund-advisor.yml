@@ -1,0 +1,32 @@
+name: 每日基金AI诊断
+
+on:
+  schedule:
+    # 北京时间工作日 14:30 (UTC 6:30)，收盘后半小时
+    - cron: '30 6 * * 1-5'
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  advisor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install akshare pandas requests
+
+      - name: 运行基金诊断
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SERVER_CHAN_KEY: ${{ secrets.SERVER_CHAN_KEY }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+        run: python fund_advisor.py
