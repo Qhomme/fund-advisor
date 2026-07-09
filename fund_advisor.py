@@ -168,6 +168,32 @@ def fetch_fund_data():
                 fund_report += f"- 【场外】{info['name']}({code}): 估值接口不可用, 当前持仓比: {current_mock_ratio*100}%\n"
     return fund_report
 
+def fetch_portfolio_holdings():
+    """
+    获取组合基金最新季报的前十大重仓股，用于持仓变动分析
+    """
+    print("▶ 正在分析基金最新季报持仓...")
+    report = ""
+
+    # ETF 是指数基金，不披露主动持仓，此处仅展示场外主动基金
+    active_funds = {k: v for k, v in PORTFOLIO_STRATEGY.items() if k not in ["512890", "159819"]}
+
+    for code, info in active_funds.items():
+        try:
+            df = ak.fund_portfolio_hold_em(symbol=code, date="2026")
+            if df.empty:
+                report += f"- {info['name']}({code}): 暂无最新持仓数据\n"
+                continue
+            latest_q = df["季度"].iloc[0]
+            report += f"- {info['name']}({code})  [{latest_q}]:\n"
+            for _, row in df.head(5).iterrows():
+                report += f"    {row['股票名称']}({row['股票代码']}) 占比{row['占净值比例']}%\n"
+        except Exception:
+            report += f"- {info['name']}({code}): 持仓数据获取失败\n"
+
+    return report if report else "暂无持仓数据。"
+
+
 def fetch_market_news():
     """
     第二步：多源聚合当日重要新闻
@@ -206,7 +232,7 @@ def fetch_market_news():
     return "\n".join(all_news)
 
 # ==================== 3. Gemini 智能决策大脑 ====================
-def ask_gemini_advisor(fund_data, market_news):
+def ask_gemini_advisor(fund_data, market_news, portfolio_holdings):
     """
     第三步：通过 OpenAI 兼容代理调用 Gemini，给出调仓建议
     """
@@ -230,11 +256,15 @@ def ask_gemini_advisor(fund_data, market_news):
 【最新市场宏观电报快讯】
 {market_news}
 
+【基金最新季报重仓股持仓】
+{portfolio_holdings}
+
 请严格遵循以下流程给出专业决策报告：
 1. 【第一行必须有且仅有明确结论】：格式必须为"今日决策：保持观望，不作调整" 或 "今日决策：执行调仓"。
 2. 【数据审计】：计算各持仓今日波动后是否偏离了硬性目标比例。如果未遭遇大面积暴跌、或者偏离度未超过安全阈值（5%），请务必坚守长线纪律，优先选择"保持观望"。
-3. 【宏观风险评估】：结合快讯，重点诊断【美伊冲突升级对全球算力/供应链的情绪传导】、以及【中国AI硬件出口与传统制造去产能】在今日是否有突发系统性风险。
-4. 【市面竞品与调仓精细化建议】：
+3. 【持仓诊断】：检查各基金最新季报的重仓股是否与基金定位一致。如果发现重仓股行业漂移、集中度过高、或持仓风格与策略相悖，请在报告中指出风险。
+4. 【宏观风险评估】：结合快讯，重点诊断【美伊冲突升级对全球算力/供应链的情绪传导】、以及【中国AI硬件出口与传统制造去产能】在今日是否有突发系统性风险。
+5. 【市面竞品与调仓精细化建议】：
    - 若需要调仓：明确列出"卖出XX基金百分之几，买入XX基金百分之几"。
    - 若保持不调整：请另外推荐1支当前市面上极具潜力的其它类型基金（如跨境纳指QDII、或清洁能源REITs），并说明其是否适合作为下一阶段的备用弹药。
 
@@ -294,7 +324,8 @@ if __name__ == "__main__":
 
     fund_info = fetch_fund_data()
     market_news = fetch_market_news()
-    final_advice = ask_gemini_advisor(fund_info, market_news)
+    portfolio_holdings = fetch_portfolio_holdings()
+    final_advice = ask_gemini_advisor(fund_info, market_news, portfolio_holdings)
     push_report_to_mobile(final_advice)
 
     print("=== 今日诊断审计流结束 ===")
