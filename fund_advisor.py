@@ -10,7 +10,7 @@ from datetime import datetime
 # 【请设置环境变量 GEMINI_API_KEY 为您的 Gemini API 密钥】
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Gemini API 代理地址，默认使用 tomdog.cc.cd 代理
-GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "https://tomdog.cc.cd")
+GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "https://geminiproxy.tomdog.cc.cd")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # 财联社电报会话（复用 cookie 避免每次重新建立连接）
